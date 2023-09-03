@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="kr.smhrd.mapper.BoardMapper">
+
+	<!-- 동적 sql -->
+<sql id="search">
+	<if test="type=='writer'">
+		where writer like concat('%',#{keyword},'%')
+	</if>
+	<if test="type=='title'">
+		where title like concat('%',#{keyword},'%')
+	</if>
+	<if test="type=='content'">
+		where content like concat('%',#{keyword},'%')
+	</if>
+</sql>
+
+
+<select id="boardList" resultType="kr.smhrd.entity.Board" parameterType="kr.smhrd.entity.Criteria">
+	select *from reply
+	<include refid="search"/>
+	order by bgroup desc, bseq asc
+	limit  #{pageStart},#{perPageNum} <!-- getter 메소드로 가져오는 녀석 -->
+</select>
+
+<!-- 원글을 입력할때 사용 답글은 insert하나를 또 만들어 줘야 한다 -->
+<insert id="boardInsert" parameterType="kr.smhrd.entity.Board">
+	<selectKey keyProperty="bgroup" resultType="kr.smhrd.entity.Board" order="BEFORE">
+		select IFNULL(max(bgroup)+1,0) as bgroup from reply
+	</selectKey>
+
+	insert into reply(title, content, writer,username, bgroup, bseq, blevel)
+	values(#{title},#{content},#{writer},#{username},#{bgroup} ,0,0)
+</insert>
+
+<!-- 답글용 insert -->
+<update id="replySeqUpdate" parameterType="kr.smhrd.entity.Board">
+	update reply set bseq=bseq+1 where bgroup=#{bgroup} and bseq > #{bseq}
+</update>
+
+<insert id="replyInsert" parameterType="kr.smhrd.entity.Board">
+	insert into reply(title, content, writer,username, bgroup, bseq, blevel)
+	values(#{title},#{content},#{writer},#{username},#{bgroup} ,#{bseq},#{blevel})
+</insert>
+
+<select id="boardGet" resultType="kr.smhrd.entity.Board">
+	select * from reply where num = #{num}
+</select>
+
+<select id="totalCount" resultType="int" parameterType="kr.smhrd.entity.Criteria">
+select count(*) from reply
+<include refid="search"/>
+</select>
+
+</mapper>
+
